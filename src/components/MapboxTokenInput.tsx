@@ -22,28 +22,28 @@ const MapboxTokenInput: React.FC<MapboxTokenInputProps> = ({ onSubmit }) => {
   return (
     <Card className="max-w-md mx-auto my-8 shadow-md">
       <CardHeader>
-        <CardTitle>Mapbox API Token Required</CardTitle>
+        <CardTitle>Google Maps API Key Required</CardTitle>
         <CardDescription>
-          This application requires a Mapbox public token to display maps and search for locations.
+          This application requires a Google Maps API key to display maps and search for locations.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="mapbox-token">Mapbox Public Token</Label>
+            <Label htmlFor="google-maps-key">Google Maps API Key</Label>
             <Input
-              id="mapbox-token"
+              id="google-maps-key"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="pk.eyJ1Ijo..."
+              placeholder="AIzaSyA..."
               className="font-mono text-sm"
             />
           </div>
           <div className="text-sm text-gray-500">
-            Get your token from the <a href="https://mapbox.com/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Mapbox Dashboard</a> after creating an account.
+            Get your API key from the <a href="https://console.cloud.google.com/google/maps-apis/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Google Cloud Console</a> after creating an account.
           </div>
           <Button type="submit" disabled={!token.trim()}>
-            Save Token
+            Save API Key
           </Button>
         </form>
       </CardContent>
