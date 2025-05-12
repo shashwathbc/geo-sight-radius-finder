@@ -1,54 +1,34 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-interface MapboxTokenInputProps {
-  onSubmit: (token: string) => void;
+interface MapInfoProps {
+  onContinue: () => void;
 }
 
-const MapboxTokenInput: React.FC<MapboxTokenInputProps> = ({ onSubmit }) => {
-  const [token, setToken] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (token.trim()) {
-      onSubmit(token.trim());
-    }
-  };
-
+const MapInfo: React.FC<MapInfoProps> = ({ onContinue }) => {
   return (
     <Card className="max-w-md mx-auto my-8 shadow-md">
       <CardHeader>
-        <CardTitle>Google Maps API Key Required</CardTitle>
+        <CardTitle>Open Source Maps Ready</CardTitle>
         <CardDescription>
-          This application requires a Google Maps API key to display maps and search for locations.
+          This application uses MapLibre GL JS, an open-source mapping library that doesn't require an API key.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="google-maps-key">Google Maps API Key</Label>
-            <Input
-              id="google-maps-key"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="AIzaSyA..."
-              className="font-mono text-sm"
-            />
-          </div>
+        <div className="space-y-4">
           <div className="text-sm text-gray-500">
-            Get your API key from the <a href="https://console.cloud.google.com/google/maps-apis/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Google Cloud Console</a> after creating an account.
+            <p>MapLibre GL JS is a free, open-source JavaScript library that renders interactive maps using WebGL.</p>
+            <p className="mt-2">No API key is required to display maps or search for locations.</p>
           </div>
-          <Button type="submit" disabled={!token.trim()}>
-            Save API Key
+          <Button type="button" onClick={onContinue}>
+            Continue to Map
           </Button>
-        </form>
+        </div>
       </CardContent>
     </Card>
   );
 };
 
-export default MapboxTokenInput;
+export default MapInfo;

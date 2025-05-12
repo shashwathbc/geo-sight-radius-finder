@@ -1,6 +1,6 @@
-
-import React, { useRef, useState, useCallback } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, Circle } from '@react-google-maps/api';
+import React, { useRef, useState, useEffect } from 'react';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { Card, CardContent } from "@/components/ui/card";
 
 export interface LocationData {
@@ -23,177 +23,169 @@ interface MapDisplayProps {
   location?: LocationData;
   radius: number; // in kilometers
   places: PlaceData[];
-  mapboxToken: string; // Renamed to googleMapsApiKey in the Index component
 }
 
-const mapContainerStyle = {
-  width: '100%',
-  height: 'calc(100vh - 2rem)',
-  minHeight: '400px'
-};
+const MapDisplay: React.FC<MapDisplayProps> = ({ location, radius, places }) => {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<maplibregl.Map | null>(null);
+  const circleLayer = useRef<string | null>(null);
+  const markers = useRef<maplibregl.Marker[]>([]);
+  const [mapInitialized, setMapInitialized] = useState(false);
 
-const defaultCenter = {
-  lat: 39.8283,
-  lng: -98.5795 // Center of US
-};
+  // Initialize map when component mounts
+  useEffect(() => {
+    if (mapContainer.current && !map.current) {
+      map.current = new maplibregl.Map({
+        container: mapContainer.current,
+        style: 'https://demotiles.maplibre.org/style.json', // Free MapLibre demo style
+        center: [-98.5795, 39.8283], // Center of US
+        zoom: 3
+      });
 
-const MapDisplay: React.FC<MapDisplayProps> = ({ location, radius, places, mapboxToken }) => {
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
-  const circleRef = useRef<google.maps.Circle | null>(null);
+      map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
+      
+      map.current.on('load', () => {
+        setMapInitialized(true);
+      });
+    }
 
-  // Load Google Maps API
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: mapboxToken // Using the provided API key
-  });
-
-  // Map load callback
-  const onMapLoad = useCallback((map: google.maps.Map) => {
-    setMap(map);
+    // Cleanup function to remove map
+    return () => {
+      markers.current.forEach(marker => marker.remove());
+      markers.current = [];
+      
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
   }, []);
 
-  // Map unload callback
-  const onUnmount = useCallback(() => {
-    setMap(null);
-  }, []);
-
-  // Update markers and circle when location or places change
-  React.useEffect(() => {
-    if (!isLoaded || !map) return;
+  // Update map when location changes
+  useEffect(() => {
+    if (!map.current || !mapInitialized || !location) return;
 
     // Clear previous markers
-    markersRef.current.forEach(marker => marker.setMap(null));
-    markersRef.current = [];
+    markers.current.forEach(marker => marker.remove());
+    markers.current = [];
 
-    // Clear previous circle
-    if (circleRef.current) {
-      circleRef.current.setMap(null);
-      circleRef.current = null;
+    // Add main location marker
+    const mainMarker = new maplibregl.Marker({
+      color: '#3B82F6'
+    })
+      .setLngLat([location.lng, location.lat])
+      .addTo(map.current);
+
+    if (location.formattedAddress) {
+      const popup = new maplibregl.Popup({ offset: 25 })
+        .setHTML(`<p class="font-medium">${location.formattedAddress}</p>`);
+      mainMarker.setPopup(popup);
     }
 
-    // If we have a location, add the main marker and circle
-    if (location) {
-      // Add main location marker
-      const mainMarker = new google.maps.Marker({
-        position: { lat: location.lat, lng: location.lng },
-        map: map,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 10,
-          fillColor: '#3B82F6',
-          fillOpacity: 1,
-          strokeWeight: 2,
-          strokeColor: '#FFFFFF',
-        }
-      });
+    markers.current.push(mainMarker);
 
-      // Add info window if we have a formatted address
-      if (location.formattedAddress) {
-        const infoWindow = new google.maps.InfoWindow({
-          content: `<p class="font-medium">${location.formattedAddress}</p>`
-        });
+    // Center and zoom the map
+    map.current.flyTo({
+      center: [location.lng, location.lat],
+      zoom: 14,
+      essential: true
+    });
 
-        mainMarker.addListener('click', () => {
-          infoWindow.open(map, mainMarker);
-        });
+    // Draw radius circle
+    if (map.current.getLayer('radius-circle')) {
+      map.current.removeLayer('radius-circle');
+    }
+    
+    if (map.current.getSource('radius-source')) {
+      map.current.removeSource('radius-source');
+    }
+
+    // Create a circle with the specified radius
+    const radiusInMeters = radius * 1000;
+    
+    map.current.addSource('radius-source', {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [location.lng, location.lat]
+        },
+        properties: {}
       }
+    });
 
-      markersRef.current.push(mainMarker);
+    map.current.addLayer({
+      id: 'radius-circle',
+      type: 'circle',
+      source: 'radius-source',
+      paint: {
+        'circle-radius': {
+          stops: [
+            [0, 0],
+            [20, radiusInMeters / 0.3]
+          ],
+          base: 2
+        },
+        'circle-color': '#3B82F6',
+        'circle-opacity': 0.15,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#3B82F6',
+        'circle-stroke-opacity': 0.5
+      }
+    });
 
-      // Add radius circle (1km radius)
-      const radiusInMeters = radius * 1000;
-      circleRef.current = new google.maps.Circle({
-        map: map,
-        center: { lat: location.lat, lng: location.lng },
-        radius: radiusInMeters,
-        fillColor: '#3B82F6',
-        fillOpacity: 0.15,
-        strokeColor: '#3B82F6',
-        strokeWeight: 2,
-        strokeOpacity: 0.5
-      });
+    circleLayer.current = 'radius-circle';
+  }, [location, radius, mapInitialized]);
 
-      // Center map on the location
-      map.setCenter({ lat: location.lat, lng: location.lng });
-      map.setZoom(14);
-    }
+  // Add place markers when places change
+  useEffect(() => {
+    if (!map.current || !mapInitialized || !location || places.length === 0) return;
 
-    // Add place markers
-    if (places.length > 0 && location) {
-      places.forEach(place => {
-        // Different colors for different place types
-        let iconColor = '#3B82F6'; // Default blue
-      
-        switch (place.type) {
-          case 'hospital':
-            iconColor = '#EC4899'; // Pink
-            break;
-          case 'school':
-            iconColor = '#22C55E'; // Green
-            break;
-          case 'transport':
-            iconColor = '#F59E0B'; // Orange
-            break;
-        }
-      
-        const placeMarker = new google.maps.Marker({
-          position: { lat: place.location.lat, lng: place.location.lng },
-          map: map,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: iconColor,
-            fillOpacity: 1,
-            strokeWeight: 2,
-            strokeColor: '#FFFFFF',
-          }
-        });
-      
-        const infoWindow = new google.maps.InfoWindow({
-          content: `
-            <p class="font-medium">${place.name}</p>
-            <p class="text-sm capitalize">${place.type}</p>
-          `
-        });
-      
-        placeMarker.addListener('click', () => {
-          infoWindow.open(map, placeMarker);
-        });
-      
-        markersRef.current.push(placeMarker);
-      });
-    }
-  }, [isLoaded, map, location, places, radius]);
+    // Remove old place markers but keep the main marker
+    markers.current.slice(1).forEach(marker => marker.remove());
+    markers.current = markers.current.slice(0, 1);
 
-  if (!isLoaded) {
-    return (
-      <Card className="w-full h-full overflow-hidden shadow-md">
-        <CardContent className="p-0 flex items-center justify-center h-[calc(100vh-2rem)] min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-            <p>Loading Maps...</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+    // Add new place markers
+    places.forEach(place => {
+      // Different colors for different place types
+      let color = '#3B82F6'; // Default blue
+      
+      switch (place.type) {
+        case 'hospital':
+          color = '#EC4899'; // Pink
+          break;
+        case 'school':
+          color = '#22C55E'; // Green
+          break;
+        case 'transport':
+          color = '#F59E0B'; // Orange
+          break;
+      }
+      
+      const placeMarker = new maplibregl.Marker({
+        color
+      })
+        .setLngLat([place.location.lng, place.location.lat])
+        .addTo(map.current);
+      
+      const popup = new maplibregl.Popup({ offset: 25 })
+        .setHTML(`
+          <p class="font-medium">${place.name}</p>
+          <p class="text-sm capitalize">${place.type}</p>
+        `);
+      
+      placeMarker.setPopup(popup);
+      markers.current.push(placeMarker);
+    });
+  }, [places, location, mapInitialized]);
 
   return (
     <Card className="w-full h-full overflow-hidden shadow-md">
       <CardContent className="p-0">
-        <GoogleMap
-          mapContainerStyle={mapContainerStyle}
-          center={location || defaultCenter}
-          zoom={location ? 14 : 3}
-          onLoad={onMapLoad}
-          onUnmount={onUnmount}
-          options={{
-            streetViewControl: false,
-            mapTypeControl: false,
-            fullscreenControl: true,
-            zoomControl: true,
-          }}
+        <div 
+          ref={mapContainer} 
+          className="w-full h-[calc(100vh-2rem)] min-h-[400px]"
         />
       </CardContent>
     </Card>

@@ -2,19 +2,18 @@
 import { AddressData } from '@/components/AddressForm';
 import { LocationData, PlaceData } from '@/components/MapDisplay';
 
-// Geocode an address to get coordinates using Google Maps Geocoding API
-export async function geocodeAddress(address: AddressData, googleMapsApiKey: string): Promise<LocationData> {
+// Geocode an address to get coordinates
+export async function geocodeAddress(address: AddressData): Promise<LocationData> {
   const addressString = `${address.street}, ${address.city}, ${address.state} ${address.zipCode}`;
   
   try {
     // For demonstration, we'll simulate the API response
-    // In production, you would use the actual Google Geocoding API
+    // In production, you would use a real geocoding service like Nominatim (OpenStreetMap)
     
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Generate a random location near the center of the US
-    // In a real application, you would call the Google Geocoding API
     const baseLat = 39.8283;
     const baseLng = -98.5795;
     const lat = baseLat + (Math.random() - 0.5) * 10;
@@ -31,14 +30,13 @@ export async function geocodeAddress(address: AddressData, googleMapsApiKey: str
   }
 }
 
-// Search for nearby places using Google Places API
+// Search for nearby places
 export async function searchNearbyPlaces(
   location: LocationData,
-  googleMapsApiKey: string,
   radius: number
 ): Promise<PlaceData[]> {
   // For demonstration, we'll simulate the API response with mock data
-  // In a real application, you would use the actual Google Places API
+  // In production, you would use a real POI service
   
   try {
     // Simulate API call delay

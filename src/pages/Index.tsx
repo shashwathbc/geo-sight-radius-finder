@@ -1,58 +1,31 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import AddressForm, { AddressData } from '@/components/AddressForm';
 import MapDisplay, { LocationData, PlaceData } from '@/components/MapDisplay';
 import ResultsSummary from '@/components/ResultsSummary';
-import MapboxTokenInput from '@/components/MapboxTokenInput';
+import MapInfo from '@/components/MapboxTokenInput';
 import { geocodeAddress, searchNearbyPlaces } from '@/services/locationService';
 import { useToast } from '@/components/ui/use-toast';
 
 const DEFAULT_RADIUS = 1; // 1km radius
 
 const Index = () => {
-  const [googleMapsApiKey, setGoogleMapsApiKey] = useState<string | null>(null);
+  const [showMap, setShowMap] = useState<boolean>(false);
   const [location, setLocation] = useState<LocationData | undefined>(undefined);
   const [places, setPlaces] = useState<PlaceData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Check local storage for saved token
-  useEffect(() => {
-    const savedToken = localStorage.getItem('google_maps_api_key');
-    if (savedToken) {
-      setGoogleMapsApiKey(savedToken);
-    }
-  }, []);
-
-  const handleSaveToken = (token: string) => {
-    setGoogleMapsApiKey(token);
-    localStorage.setItem('google_maps_api_key', token);
-    
-    toast({
-      title: "Google Maps API key saved",
-      description: "Your Google Maps API key has been saved for this session."
-    });
-  };
-
   const handleAddressSubmit = async (address: AddressData) => {
-    if (!googleMapsApiKey) {
-      toast({
-        title: "API Key Required",
-        description: "Please provide a Google Maps API key first.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     setIsLoading(true);
     
     try {
       // First, geocode the address to get coordinates
-      const locationData = await geocodeAddress(address, googleMapsApiKey);
+      const locationData = await geocodeAddress(address);
       setLocation(locationData);
       
       // Then search for places
-      const placesData = await searchNearbyPlaces(locationData, googleMapsApiKey, DEFAULT_RADIUS);
+      const placesData = await searchNearbyPlaces(locationData, DEFAULT_RADIUS);
       setPlaces(placesData);
       
       toast({
@@ -75,9 +48,9 @@ const Index = () => {
     }
   };
 
-  // If no token is provided yet, show the token input form
-  if (!googleMapsApiKey) {
-    return <MapboxTokenInput onSubmit={handleSaveToken} />;
+  // If user hasn't clicked continue yet, show the intro screen
+  if (!showMap) {
+    return <MapInfo onContinue={() => setShowMap(true)} />;
   }
 
   return (
@@ -100,7 +73,6 @@ const Index = () => {
               location={location} 
               radius={DEFAULT_RADIUS}
               places={places}
-              mapboxToken={googleMapsApiKey}
             />
           </div>
           
@@ -117,7 +89,7 @@ const Index = () => {
           <p>Enter a U.S. address to find nearby hospitals, schools, and transport options within a 1km radius.</p>
           <p className="mt-2">
             Note: This is a demonstration using simulated data. In a production environment, 
-            you would use Google Places API for real-world data.
+            you would use real-world location data.
           </p>
         </div>
       </div>
