@@ -124,8 +124,8 @@ const MapDisplay: React.FC<MapDisplayProps> = ({ location, radius, places }) => 
           stops: [
             [0, 0],
             [20, radiusInMeters / 0.3]
-          ],
-          base: 2
+          ]
+          // Removed the 'base' property that was causing the TS error
         },
         'circle-color': '#3B82F6',
         'circle-opacity': 0.15,
